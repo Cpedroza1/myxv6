@@ -459,6 +459,12 @@ wait2(uint64 addr, uint64 addr2)
             release(&wait_lock);
             return -1;
           }
+          if(addr2 != 0 && copyout(p->pagetable, addr2, (char *)&np->xstate,
+                                  sizeof(np->xstate)) < 0) {
+            release(&np->lock);
+            release(&wait_lock);
+            return -1;
+          }
           freeproc(np);
           release(&np->lock);
           release(&wait_lock);
