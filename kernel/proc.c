@@ -106,7 +106,7 @@ static struct proc*
 allocproc(void)
 {
   struct proc *p;
-  int cputime = 0;
+  
 
   for(p = proc; p < &proc[NPROC]; p++) {
     acquire(&p->lock);
@@ -121,6 +121,7 @@ allocproc(void)
 found:
   p->pid = allocpid();
   p->state = USED;
+  p->cputime = 0;
 
   // Allocate a trapframe page.
   if((p->trapframe = (struct trapframe *)kalloc()) == 0){
@@ -136,7 +137,6 @@ found:
     release(&p->lock);
     return 0;
   }
-  cputime += 1;
 
   // Set up new context to start executing at forkret,
   // which returns to user space.
@@ -438,6 +438,7 @@ wait2(uint64 addr, uint64 addr2)
   struct proc *np;
   int havekids, pid;
   struct proc *p = myproc();
+  struct rusage ru;
 
   acquire(&wait_lock);
 
@@ -453,14 +454,15 @@ wait2(uint64 addr, uint64 addr2)
         if(np->state == ZOMBIE){
           // Found one.
           pid = np->pid;
+          ru.cputime = np->cputime;
           if(addr != 0 && copyout(p->pagetable, addr, (char *)&np->xstate,
                                   sizeof(np->xstate)) < 0) {
             release(&np->lock);
             release(&wait_lock);
             return -1;
           }
-          if(addr2 != 0 && copyout(p->pagetable, addr2, (char *)&np->xstate,
-                                  sizeof(np->xstate)) < 0) {
+          if(addr2 != 0 && copyout(p->pagetable, addr2, (char *)&ru,
+                                  sizeof(ru)) < 0) {
             release(&np->lock);
             release(&wait_lock);
             return -1;
