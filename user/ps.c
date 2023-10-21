@@ -7,6 +7,9 @@ int
 main(int argc, char **argv)
 {
   struct pstat uproc[NPROC];
+  struct proc p;
+
+  int prio = p.priority;
   int nprocs;
   int i;
   char *state;
@@ -21,11 +24,11 @@ main(int argc, char **argv)
   if (nprocs < 0)
     exit(-1);
 
-  printf("pid\tstate\t\tsize\tppid\tname\n");
+  printf("pid\tstate\t\tsize\tppid\tname\tpriority\n");
   for (i=0; i<nprocs; i++) {
     state = states[uproc[i].state];
     printf("%d\t%s\t%l\t%d\t%s\n", uproc[i].pid, state,
-                   uproc[i].size, uproc[i].ppid, uproc[i].name);
+                   uproc[i].size, uproc[i].ppid, uproc[i].name, prio);
   }
 
   exit(0);

@@ -21,7 +21,7 @@ main(int argc, char *argv[]){
 		wait2(&pid, &ru);
 		int endTime = uptime();
 		int totalTime = endTime - startTime;
-		printf("Time: %d, cputime: %d \n", totalTime, cputime);
+		printf("Time: %d, cputime: %d \n", totalTime, ru.cputime);
 
 	}else{
 		printf("fork failed\n");

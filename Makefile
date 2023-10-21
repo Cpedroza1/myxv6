@@ -136,6 +136,10 @@ UPROGS=\
 	$U/_grind\
 	$U/_wc\
 	$U/_zombie\
+	$U/_pexec\
+	$U/_ps\
+	$U/_pstest\
+	$U/_pstree\
 
 fs.img: mkfs/mkfs README $(UPROGS)
 	mkfs/mkfs fs.img README $(UPROGS)

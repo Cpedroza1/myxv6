@@ -130,11 +130,9 @@ static uint64 (*syscalls[])(void) = {
 [SYS_link]    sys_link,
 [SYS_mkdir]   sys_mkdir,
 [SYS_close]   sys_close,
-
 [SYS_getprocs]   sys_getprocs,
-
-[SYS_getPriority]   sys_getPriority,
-[SYS_setPriority]   sys_setPriority,
+[SYS_getPriority]   sys_getpriority,
+[SYS_setPriority]   sys_setpriority,
 
 };
 

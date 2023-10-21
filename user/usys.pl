@@ -38,6 +38,6 @@ entry("sbrk");
 entry("sleep");
 entry("uptime");
 entry("getprocs");
-entry("getPriority");
-entry("setPriority");
+entry("getpriority");
+entry("setpriority");
 

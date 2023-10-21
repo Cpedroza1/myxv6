@@ -111,9 +111,31 @@ sys_uptime(void)
 uint64
 sys_getprocs(void)
 {
+  struct proc *p;
   uint64 addr;  // user pointer to struct pstat
+
 
   if (argaddr(0, &addr) < 0)
     return -1;
-  return(procinfo(addr));
+  return(procinfo(addr), p->priority);
+}
+uint64
+sys_setpriority(void)
+{
+  int prio;
+  int pid;
+
+  if(argint(0, &prio)<0){
+    return -1;
+  }
+  if(argint(0, &pid)<0)
+    return -1;
+
+  return setpriority(prio, pid);
+}
+uint64
+sys_getpriority(void)
+{
+  return getpriority();
+  
 }

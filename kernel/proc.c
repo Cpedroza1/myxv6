@@ -6,7 +6,7 @@
 #include "proc.h"
 #include "pstat.h"
 #include "defs.h"
-#include "pstat.h"
+
 
 struct cpu cpus[NCPU];
 
@@ -123,6 +123,7 @@ found:
   p->pid = allocpid();
   p->state = USED;
   p->cputime = 0;
+  p->priority = 10;
 
   // Allocate a trapframe page.
   if((p->trapframe = (struct trapframe *)kalloc()) == 0){
@@ -247,7 +248,7 @@ userinit(void)
   p->cwd = namei("/");
 
   p->state = RUNNABLE;
-
+  p->readytime = uptime();
   release(&p->lock);
 }
 
@@ -317,6 +318,7 @@ fork(void)
 
   acquire(&np->lock);
   np->state = RUNNABLE;
+  np->readytime = uptime();
   release(&np->lock);
 
   return pid;
@@ -559,6 +561,7 @@ yield(void)
   struct proc *p = myproc();
   acquire(&p->lock);
   p->state = RUNNABLE;
+  p->readytime = uptime();
   sched();
   release(&p->lock);
 }
@@ -627,6 +630,7 @@ wakeup(void *chan)
       acquire(&p->lock);
       if(p->state == SLEEPING && p->chan == chan) {
         p->state = RUNNABLE;
+        p->readytime = uptime();
       }
       release(&p->lock);
     }
@@ -648,6 +652,7 @@ kill(int pid)
       if(p->state == SLEEPING){
         // Wake process from sleep().
         p->state = RUNNABLE;
+        p->readytime = uptime();
       }
       release(&p->lock);
       return 0;
@@ -743,4 +748,25 @@ procinfo(uint64 addr)
     addr += sizeof(procinfo);
   }
   return nprocs;
+}
+
+int
+setpriority(int priority, int pid){
+  struct proc *p;
+
+
+  for(p = proc; p < &proc[NPROC]; p++){
+    if(p->pid == pid){
+      p->priority = priority;
+      break;
+    }
+  }
+  return pid;
+}
+
+int
+getpriority(void){
+  struct proc *p;
+
+  return p->priority;
 }
