@@ -7,7 +7,6 @@
 #include "pstat.h"
 #include "defs.h"
 
-
 struct cpu cpus[NCPU];
 
 struct proc proc[NPROC];
@@ -766,7 +765,6 @@ setpriority(int priority, int pid){
 
 int
 getpriority(void){
-  struct proc *p;
 
-  return p->priority;
+  return getpriority();
 }

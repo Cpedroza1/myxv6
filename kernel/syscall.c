@@ -106,6 +106,8 @@ extern uint64 sys_wait2(void);
 extern uint64 sys_write(void);
 extern uint64 sys_uptime(void);
 extern uint64 sys_getprocs(void);
+extern uint64 sys_setpriority(void);
+extern uint64 SYS_getPriority(void);
 
 static uint64 (*syscalls[])(void) = {
 [SYS_fork]    sys_fork,
