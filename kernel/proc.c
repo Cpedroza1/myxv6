@@ -106,7 +106,6 @@ static struct proc*
 allocproc(void)
 {
   struct proc *p;
-  
 
   for(p = proc; p < &proc[NPROC]; p++) {
     acquire(&p->lock);
@@ -121,8 +120,6 @@ allocproc(void)
 found:
   p->pid = allocpid();
   p->state = USED;
-  p->cputime = 0;
-  p->priority = 10;
 
   // Allocate a trapframe page.
   if((p->trapframe = (struct trapframe *)kalloc()) == 0){
@@ -247,7 +244,7 @@ userinit(void)
   p->cwd = namei("/");
 
   p->state = RUNNABLE;
-  p->readytime = uptime();
+
   release(&p->lock);
 }
 
@@ -317,7 +314,6 @@ fork(void)
 
   acquire(&np->lock);
   np->state = RUNNABLE;
-  np->readytime = uptime();
   release(&np->lock);
 
   return pid;
@@ -432,63 +428,6 @@ wait(uint64 addr)
   }
 }
 
-// Wait for a child process to exit and return its pid.
-// Return -1 if this process has no children.
-int
-wait2(uint64 addr, uint64 addr2)
-{
-  struct proc *np;
-  int havekids, pid;
-  struct proc *p = myproc();
-  struct rusage ru;
-
-  acquire(&wait_lock);
-
-  for(;;){
-    // Scan through table looking for exited children.
-    havekids = 0;
-    for(np = proc; np < &proc[NPROC]; np++){
-      if(np->parent == p){
-        // make sure the child isn't still in exit() or swtch().
-        acquire(&np->lock);
-
-        havekids = 1;
-        if(np->state == ZOMBIE){
-          // Found one.
-          pid = np->pid;
-          ru.cputime = np->cputime;
-          if(addr != 0 && copyout(p->pagetable, addr, (char *)&np->xstate,
-                                  sizeof(np->xstate)) < 0) {
-            release(&np->lock);
-            release(&wait_lock);
-            return -1;
-          }
-          if(addr2 != 0 && copyout(p->pagetable, addr2, (char *)&ru,
-                                  sizeof(ru)) < 0) {
-            release(&np->lock);
-            release(&wait_lock);
-            return -1;
-          }
-          freeproc(np);
-          release(&np->lock);
-          release(&wait_lock);
-          return pid;
-        }
-        release(&np->lock);
-      }
-    }
-
-    // No point waiting if we don't have any children.
-    if(!havekids || p->killed){
-      release(&wait_lock);
-      return -1;
-    }
-    
-    // Wait for a child to exit.
-    sleep(p, &wait_lock);  //DOC: wait-sleep
-  }
-}
-
 // Per-CPU process scheduler.
 // Each CPU calls scheduler() after setting itself up.
 // Scheduler never returns.  It loops, doing:
@@ -560,7 +499,6 @@ yield(void)
   struct proc *p = myproc();
   acquire(&p->lock);
   p->state = RUNNABLE;
-  p->readytime = uptime();
   sched();
   release(&p->lock);
 }
@@ -629,7 +567,6 @@ wakeup(void *chan)
       acquire(&p->lock);
       if(p->state == SLEEPING && p->chan == chan) {
         p->state = RUNNABLE;
-        p->readytime = uptime();
       }
       release(&p->lock);
     }
@@ -651,7 +588,6 @@ kill(int pid)
       if(p->state == SLEEPING){
         // Wake process from sleep().
         p->state = RUNNABLE;
-        p->readytime = uptime();
       }
       release(&p->lock);
       return 0;
@@ -736,7 +672,6 @@ procinfo(uint64 addr)
     procinfo.pid = p->pid;
     procinfo.state = p->state;
     procinfo.size = p->sz;
-    procinfo.priority = p->priority;
     if (p->parent)
       procinfo.ppid = (p->parent)->pid;
     else
@@ -748,24 +683,4 @@ procinfo(uint64 addr)
     addr += sizeof(procinfo);
   }
   return nprocs;
-}
-
-int
-setpriority(int priority, int pid){
-  struct proc *p;
-
-
-  for(p = proc; p < &proc[NPROC]; p++){
-    if(p->pid == pid){
-      p->priority = priority;
-      break;
-    }
-  }
-  return pid;
-}
-
-int
-getpriority(void){
-
-  return getpriority();
 }
