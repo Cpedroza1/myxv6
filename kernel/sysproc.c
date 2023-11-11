@@ -7,6 +7,8 @@
 #include "spinlock.h"
 #include "proc.h"
 
+
+
 uint64
 sys_exit(void)
 {
@@ -47,8 +49,9 @@ sys_sbrk(void)
   if(argint(0, &n) < 0)
     return -1;
   addr = myproc()->sz;
-  if(growproc(n) < 0)
-    return -1;
+  myproc()->sz+=n;
+  // if(growproc(n) < 0)
+  //   return -1;
   return addr;
 }
 
@@ -106,4 +109,10 @@ sys_getprocs(void)
   if (argaddr(0, &addr) < 0)
     return -1;
   return(procinfo(addr));
+}
+
+uint64
+sys_freepmem(void)
+{
+  return(nfreepages()*PGSIZE);
 }

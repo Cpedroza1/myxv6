@@ -65,6 +65,20 @@ usertrap(void)
     intr_on();
 
     syscall();
+
+  } else if(r_scause() == 13 || r_scause() == 15){
+      if(r_stval() <= p->sz){
+
+        uint64 vm = PGROUNDDOWN(r_stval());
+        char *pa = kalloc();
+        
+        memset(pa,0,PGSIZE);
+        mappages(p->pagetable, vm, PGSIZE, (uint64)pa, PTE_W|PTE_R|PTE_X|PTE_U);
+        // kfree(pa);
+        // p->killed = 1;
+        
+      }
+    
   } else if((which_dev = devintr()) != 0){
     // ok
   } else {
