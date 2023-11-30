@@ -484,3 +484,108 @@ sys_pipe(void)
   }
   return 0;
 }
+
+uint64
+sys_mmap(void)
+{
+  uint64 length;
+  int prot;
+  int flags;
+  struct proc *p = myproc();
+  struct mmr *newmmr = 0;
+  uint64 start_addr;
+
+  if(argaddr(1, &length)<0)
+    return -1;
+  if(argint(2, &prot)<0)
+    return -1;
+  if(argint(3, &flags)<0)
+    return -1;
+
+  for(int i=0; i< MAX_MMR; i++){
+    if(p->mmr[i].valid == 0){
+      newmmr = &(p->mmr[i]);
+      break;
+    }
+  }
+  if(newmmr){
+    start_addr = PGROUNDDOWN(p->cur_max - length);
+    newmmr->valid = 1;
+    newmmr->addr = start_addr;
+    newmmr->length = p->cur_max - start_addr;
+    newmmr->prot = prot;
+    newmmr->flags = flags;
+    newmmr->mmr_family.proc=p;
+    newmmr->mmr_family.next = &(newmmr->mmr_family);
+    newmmr->mmr_family.prev = &(newmmr->mmr_family);
+
+    if(mapvpages(p->pagetable, newmmr->addr, newmmr->length)<0){
+      newmmr->valid=0;
+      return -1;
+    }
+    if(flags & MAP_SHARED)
+      newmmr->mmr_family.listid = alloc_mmr_listid();
+    p->cur_max=start_addr;
+    return start_addr;
+  }else{
+    return -1;
+  }
+}
+
+int
+munmap(uint64 addr, uint64 length)
+{
+  struct proc *p = myproc();
+  struct mmr *mmr = 0;
+  int dofree = 0;
+  int i;
+
+  for(i=0; i<MAX_MMR; i++){
+    if((p->mmr[i].valid==1)&&(addr==p->mmr[i].addr)&&(PGROUNDUP(length)==p->mmr[i].length)){
+      mmr=&(p->mmr[i]);
+      break;
+    }
+    if(!mmr){
+      return -1;
+    }
+    mmr->valid = 0;
+    if(mmr->flags & MAP_PRIVATE)
+      dofree=1;
+    else{
+      struct mmr_list *pmmrlist=get_mmr_list(mmr->mmr_family.listid);
+      acquire(&pmmrlist->lock);
+      if(mmr->mmr_family.next == &(mmr->mmr_family)){
+        dofree =1;
+        release(&pmmrlist->lock);
+        dealloc_mmr_listid(mmr->mmr_family.listid);
+      }else{
+        (mmr->mmr_family.next)->prev=mmr->mmr_family.prev;
+        (mmr->mmr_family.prev)->next=mmr->mmr_family.next;
+        release(&pmmrlist->lock);
+      }
+    }
+  }
+    for(uint64 pageaddr=addr; pageaddr< p->mmr[i].addr+p->mmr[i].length;pageaddr += PGSIZE){
+      if(walkaddr(p->pagetable, pageaddr)){
+        uvmunmap(p->pagetable, pageaddr, 1, dofree);
+      }
+    }
+    return 0;
+}
+
+uint64
+sys_munmap(void)
+{
+  uint64 addr;
+  uint64 length;
+
+
+  if(argaddr(0, &addr)<0)
+    return -1;
+  if(argaddr(1, &length)<0)
+    return -1;
+
+
+  return munmap(addr, length);
+  
+}

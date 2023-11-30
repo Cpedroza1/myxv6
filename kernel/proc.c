@@ -6,6 +6,10 @@
 #include "proc.h"
 #include "pstat.h"
 #include "defs.h"
+#include "stat.h"
+
+struct mmr_list mmr_list[NPROC*MAX_MMR];
+struct spinlock listid_lock;
 
 struct cpu cpus[NCPU];
 
@@ -151,9 +155,33 @@ found:
 static void
 freeproc(struct proc *p)
 {
+  int dofree;
   if(p->trapframe)
     kfree((void*)p->trapframe);
   p->trapframe = 0;
+
+  for(int i=0; i < MAX_MMR; i++){
+    dofree = 0;
+    if(p->mmr[i].valid == 1){
+      if(p->mmr[i].flags & MAP_PRIVATE)
+        dofree = 1;
+      else{
+        acquire(&mmr_list[p->mmr[i].mmr_family.listid].lock);
+        if(p->mmr[i].mmr_family.next == &(p->mmr[i].mmr_family)){
+          dofree = 1;
+          release(&mmr_list[p->mmr[i].mmr_family.listid].lock);
+          dealloc_mmr_listid(p->mmr[i].mmr_family.listid);
+        }else{
+          (p->mmr[i].mmr_family.next)->prev=p->mmr[i].mmr_family.prev;
+          (p->mmr[i].mmr_family.prev)->next=p->mmr[i].mmr_family.next;
+          release(&mmr_list[p->mmr[i].mmr_family.listid].lock);
+        }
+      }
+      for(uint64 addr = p->mmr[i].addr; addr< p->mmr[i].addr+p->mmr[i].length;addr += PGSIZE)
+        if(walkaddr(p->pagetable, addr))
+          uvmunmap(p->pagetable, addr, 1, dofree);
+    }
+  }
   if(p->pagetable)
     proc_freepagetable(p->pagetable, p->sz);
   p->pagetable = 0;
@@ -230,6 +258,8 @@ userinit(void)
 
   p = allocproc();
   initproc = p;
+
+  p->cur_max = MAXVA - 2*PGSIZE;
   
   // allocate one user page and copy init's instructions
   // and data into it.
@@ -288,6 +318,7 @@ fork(void)
     release(&np->lock);
     return -1;
   }
+  np->cur_max = p->cur_max;
   np->sz = p->sz;
 
   // copy saved user registers.
@@ -684,3 +715,51 @@ procinfo(uint64 addr)
   }
   return nprocs;
 }
+
+void
+mmrlistinit(void)
+{
+  struct mmr_list *pmmrlist;
+  initlock(&listid_lock, "listid");
+  for(pmmrlist = mmr_list; pmmrlist<&mmr_list[NPROC*MAX_MMR]; pmmrlist++){
+    initlock(&pmmrlist->lock, "mmrlist");
+    pmmrlist->valid = 0;
+  }
+}
+
+struct mmr_list*
+get_mmr_list(int listid){
+  acquire(&listid_lock);
+  if(listid >= 0 && listid < NPROC*MAX_MMR && mmr_list[listid].valid){
+    release(&listid_lock);
+    return(&mmr_list[listid]);
+  }
+  else{
+    release(&listid_lock);
+    return 0;
+  }
+}
+
+void
+dealloc_mmr_listid(int listid){
+  acquire(&listid_lock);
+  mmr_list[listid].valid = 0;
+  release(&listid_lock);
+}
+
+int
+alloc_mmr_listid(){
+  acquire(&listid_lock);
+  int listid = -1;
+  for(int i=0; i<NPROC*MAX_MMR; i++){
+    if(mmr_list[i].valid == 0){
+      mmr_list[i].valid = 1;
+      listid = i;
+      break;
+    }
+  }
+  release(&listid_lock);
+  return(listid);
+}
+
+

@@ -67,16 +67,39 @@ usertrap(void)
     syscall();
 
   } else if(r_scause() == 13 || r_scause() == 15){
-      if(r_stval() <= p->sz){
 
-        uint64 vm = PGROUNDDOWN(r_stval());
+      printf("start");
+      uint64 vm = PGROUNDDOWN(r_stval());
+      int found =0;
+
+      if(vm >= p->sz){
+        printf("test6");
+        for(int i=0; i < MAX_MMR; i++){
+          if(p->mmr[i].valid==1){
+            printf("test1");
+            if(vm >= p->mmr[i].addr && vm < (p->mmr[i].addr + p->mmr[i].length)){
+              printf("test2");
+              if(r_scause() == 13 && p->mmr[i].prot & PTE_R){
+                printf("test3");
+                found =1;
+                break;
+              }else if(r_scause() == 15 && p->mmr[i].prot & PTE_W){
+                printf("test4");
+                found =1;
+                break;
+              }
+            }
+             if(found == 0){
+              p->killed =-1;
+              exit(-1);
+            }
+          }
+        }
+
         char *pa = kalloc();
         
         memset(pa,0,PGSIZE);
         mappages(p->pagetable, vm, PGSIZE, (uint64)pa, PTE_W|PTE_R|PTE_X|PTE_U);
-        // kfree(pa);
-        // p->killed = 1;
-        
       }
     
   } else if((which_dev = devintr()) != 0){
