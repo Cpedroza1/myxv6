@@ -108,6 +108,10 @@ extern uint64 sys_getprocs(void);
 extern uint64 sys_freepmem(void);
 extern uint64 sys_mmap(void);
 extern uint64 sys_munmap(void);
+extern uint64 sys_sem_init(void);
+extern uint64 sys_sem_wait(void);
+extern uint64 sys_sem_destroy(void);
+extern uint64 sys_sem_post(void);
 
 static uint64 (*syscalls[])(void) = {
 [SYS_fork]    sys_fork,

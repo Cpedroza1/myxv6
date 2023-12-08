@@ -8,7 +8,6 @@
 #include "proc.h"
 
 
-
 uint64
 sys_exit(void)
 {
@@ -115,4 +114,87 @@ uint64
 sys_freepmem(void)
 {
   return(nfreepages()*PGSIZE);
+}
+
+
+//semaphores
+
+uint64
+sys_sem_init(void)
+{
+  uint64 sem;
+  int pshared;
+  int value;
+
+  if(argaddr(0, &sem)<0)
+    return -1;
+  if(argint(1, &pshared) < 0)
+    return -1;
+  if(argint(2, &value) < 0)
+    return -1;
+
+  int index = semalloc();
+  semtable.sem[index].count = value;
+  copyout(myproc()->pagetable, sem, (char *)&index, sizeof(int));
+  return 0;
+}
+
+uint64  
+sys_sem_wait(void)
+{
+
+  uint64 sem;
+  uint64 index;
+
+  if(argaddr(0, &sem) < 0)
+    return -1;
+
+  
+
+  copyin(myproc()->pagetable, (char *)&index, sem, sizeof(int));
+
+  acquire(&semtable.sem[index].lock);
+  while(semtable.sem[index].count <= 0)
+    sleep(&semtable.sem[index], &semtable.sem[index].lock);
+  semtable.sem[index].count -= 1;
+  release(&semtable.sem[index].lock);
+
+  return 0;
+}
+
+uint64 
+sys_sem_post(void)
+{
+
+  uint64 sem;
+  uint64 index;
+
+  if(argaddr(0, &sem) < 0)
+    return -1;
+
+  copyin(myproc()->pagetable, (char *)&index, sem, sizeof(int));
+
+  acquire(&semtable.sem[index].lock);
+  semtable.sem[index].count += 1;
+  wakeup(&semtable.sem[index]);
+  release(&semtable.sem[index].lock);
+  return 0;
+}
+
+uint64 
+sys_sem_destroy(void)
+{
+  uint64 sem;
+  uint64 index;
+
+  if(argaddr(0, &sem) < 0)
+    return -1;
+
+  copyin(myproc()->pagetable, (char *)&index, sem, sizeof(int));
+
+  acquire(&semtable.sem[index].lock);
+  semdealloc(index);
+  release(&semtable.sem[index].lock);
+
+  return 0;
 }
