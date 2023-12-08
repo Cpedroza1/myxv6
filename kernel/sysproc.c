@@ -126,7 +126,7 @@ sys_sem_init(void)
   int pshared;
   int value;
 
-  if(argaddr(0, &sem)<0)
+  if(argaddr(0, &sem) < 0)
     return -1;
   if(argint(1, &pshared) < 0)
     return -1;
@@ -148,8 +148,6 @@ sys_sem_wait(void)
 
   if(argaddr(0, &sem) < 0)
     return -1;
-
-  
 
   copyin(myproc()->pagetable, (char *)&index, sem, sizeof(int));
 

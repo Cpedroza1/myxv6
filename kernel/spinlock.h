@@ -1,4 +1,6 @@
 // Mutual exclusion lock.
+#define NSEM 100
+
 struct spinlock {
   uint locked;       // Is the lock held?
 
