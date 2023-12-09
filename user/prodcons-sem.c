@@ -52,9 +52,11 @@ void producer()
 void consumer()
 {
   while(1) {
- //   printf("Consumer calling sem_wait\n");
+    // printf("Consumer calling sem_wait\n");
     sem_wait(&buffer->occupied);
+    // printf("after first wait\n");
     sem_wait(&buffer->lock);
+    // printf("after second wait\n");
     if (buffer->num_consumed >= MAX) {
         sem_post(&buffer->occupied);
         sem_post(&buffer->free);
@@ -100,14 +102,17 @@ int main(int argc, char *argv[])
   sem_init(&buffer->free, 1, BSIZE);
   sem_init(&buffer->lock, 1, 1);
 
-  for (i = 0; i < BSIZE; i++)
-    buffer->buf[i] = 0;
 
-  for (i = 0; i < nconsumers; i++)
+  for (i = 0; i < BSIZE; i++){
+    buffer->buf[i] = 0;
+  }
+
+  for (i = 0; i < nconsumers; i++){
     if (!fork()) { 
       consumer();
       exit(0);
     }
+  }
   for (i = 0; i < nproducers; i++)
     if (!fork()) {
       producer();

@@ -144,7 +144,7 @@ sys_sem_wait(void)
 {
 
   uint64 sem;
-  uint64 index;
+  int index;
 
   if(argaddr(0, &sem) < 0)
     return -1;
@@ -152,7 +152,7 @@ sys_sem_wait(void)
   copyin(myproc()->pagetable, (char *)&index, sem, sizeof(int));
 
   acquire(&semtable.sem[index].lock);
-  while(semtable.sem[index].count <= 0)
+  while(semtable.sem[index].count < 0)
     sleep(&semtable.sem[index], &semtable.sem[index].lock);
   semtable.sem[index].count -= 1;
   release(&semtable.sem[index].lock);
@@ -165,7 +165,7 @@ sys_sem_post(void)
 {
 
   uint64 sem;
-  uint64 index;
+  int index;
 
   if(argaddr(0, &sem) < 0)
     return -1;
@@ -183,7 +183,7 @@ uint64
 sys_sem_destroy(void)
 {
   uint64 sem;
-  uint64 index;
+  int index;
 
   if(argaddr(0, &sem) < 0)
     return -1;
